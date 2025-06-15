@@ -14,8 +14,6 @@ This helps to find a message which is not in the previous message id map that is
 
 After that it creates a vector and inserts the messages following the next_ids starting form the first message. It fills the vector from end to begin (reverse order). <br />
 
-Finally, it prints the messages in the vector.
+Finally, it prints the messages in the vector:
 
-
-
-
+![Capture](Capture.PNG)
