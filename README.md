@@ -24,4 +24,4 @@ or the printable string can be received and used.
 
 The unit tests are implemented using Google Test framework. 
 They check for malformed lines, correct parsing of messages, and the correct order of messages:
-![CaptureTest](docs/Capture2.PNG)
+![Capture2](docs/Capture2.PNG)
