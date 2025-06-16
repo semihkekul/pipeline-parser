@@ -7,25 +7,6 @@
 #include <algorithm>
 #include "logparser.h"
 
-namespace
-{
-constexpr char ASCII_ENCODING = '0';
-constexpr char HEX_ENCODING = '1';
-}
-
-LogParser::LogParser(const std::string& filename)
-:m_file(filename) 
-{
-    if (!m_file.is_open()) 
-    {
-        std::cerr << "Error opening file: " << filename << std::endl;
-    }
-    else
-    {
-        parseLog();
-        populateMessagesVector();
-    }
-}
 
 void LogParser::populateMessagesVector()
 {
@@ -57,10 +38,15 @@ void LogParser::populateMessagesVector()
         }
     }
 }
-          
 
 void LogParser::addLogMessageToPipeline(std::unique_ptr<LogMessage> message) 
 {
+    if(m_pipelines.find(message->pipeline_id) == m_pipelines.end())
+    {
+        std::cerr << "Error: Pipeline ID " << message->pipeline_id << " not found." << std::endl;
+        return;
+    }
+
     auto& pipeline = m_pipelines[message->pipeline_id];
 
     pipeline.previous_map[message->next_id] = message->id; // The previous id of the next message is current id
@@ -69,15 +55,20 @@ void LogParser::addLogMessageToPipeline(std::unique_ptr<LogMessage> message)
 
 }
 
-void LogParser::parseLog() 
+void LogParser::parseLog(std::istream& stream)
 {
     std::string line;
-    while (std::getline(m_file, line)) 
+    while (std::getline(stream, line)) 
     {
-        auto log_message = parseLine(line); 
+        auto log_message = parseLine(line);
+        if (!log_message)
+        {
+            std::cerr << "Skipping malformed line: " << line << std::endl;
+            continue; // Skip malformed lines
+        }
         
         auto pipeline_iter = m_pipelines.find(log_message->pipeline_id);
-        if(pipeline_iter == m_pipelines.end()) 
+        if(pipeline_iter == m_pipelines.end()) // add a new pipeline
         {
             Pipeline new_pipeline;
             m_pipelines[log_message->pipeline_id] = std::move(new_pipeline);
@@ -85,37 +76,98 @@ void LogParser::parseLog()
 
         addLogMessageToPipeline(std::move(log_message));
     }
+
+    populateMessagesVector(); // Populate the messages vector after parsing all lines
 }
 
-std::unique_ptr<LogParser::LogMessage> LogParser::parseLine(const std::string& line) const
+void LogParser::parseLog(std::ifstream& file) 
 {
+    parseLog(static_cast<std::istream&>(file));
+}
+
+void LogParser::parseLog(const std::string& log)
+{
+    std::istringstream stream(log);
+    parseLog(stream);
+}
+
+
+std::unique_ptr<LogMessage> LogParser::parseLine(const std::string& line) const
+{
+
+    if (line.empty()) 
+    {
+       return nullptr; // Return nullptr for empty lines
+    }
+
     std::istringstream stream(line);
     auto message = std::make_unique<LogMessage>();
 
-    stream >> message->pipeline_id >> message->id >> message->encoding;
+    if(!(stream >> message->pipeline_id >> message->id >> message->encoding))
+    {
+       std::cerr << "Malformed line: Missing required fields" << std::endl;
+       return nullptr; 
+    }
 
+    if (message->encoding != ASCII_ENCODING && message->encoding != HEX_ENCODING) 
+    {
+        std::cerr << "Malformed line: Invalid encoding type" << std::endl;
+        return nullptr; 
+    }
+    char opening_bracket=' ';
+    if(!(stream >> opening_bracket))// Read the opening bracket '['
+    {
+       std::cerr << "Malformed line: Missing opening bracket"<< std::endl;
+       return nullptr;
+    }
 
-    char opening_bracket;
-    stream >> opening_bracket; // Read the opening bracket '['
-    std::getline(stream, message->body, ']'); // Read until the closing bracket
-    
-    stream >> message->next_id;
+    if (!std::getline(stream, message->body, ']')) // Read until the closing bracket
+    {
+        std::cerr << "Malformed line: Missing closing bracket"<< std::endl;
+        return nullptr;
+    }
+
+    if(!(stream >> message->next_id))
+    {
+        std::cerr << "Malformed line: Missing next_id field"<< std::endl;
+        return nullptr;
+    }
 
     if (message->encoding == HEX_ENCODING) 
     {
         message->body = hexToAscii(message->body);
+        if(message->body == "")
+        {
+            std::cerr << "Malformed line: Invalid hex encoding in body" << std::endl;
+            return nullptr; // Return nullptr if hex conversion fails
+        }
+        
     }
     return message;
 }
 
 std::string LogParser::hexToAscii(const std::string& hex) const
 {
-
     std::string ascii;
     for (size_t i = 0; i < hex.length(); i += 2) 
     {
         std::string byte = hex.substr(i, 2); // Extract two characters for each byte
-        const char ch = std::stoi(byte, nullptr, 16); // Convert hex to decimal
+
+        char ch = ' ';
+        try
+        {
+            ch = std::stoi(byte, nullptr, 16); // Convert hex to decimal
+        }
+        catch (const std::invalid_argument& e)
+        {
+            std::cerr << "Invalid hex byte: " << byte << std::endl;
+            return "";
+        }
+        catch (const std::out_of_range& e)
+        {
+            std::cerr << "Hex byte out of range: " << byte << std::endl;
+            return "";
+        }
         ascii.push_back(ch); // Append the character to the ASCII string
     }
     return ascii;
@@ -123,16 +175,39 @@ std::string LogParser::hexToAscii(const std::string& hex) const
 
 void LogParser::printLogMessages() const
 {
- 
+     if (m_pipelines.empty()) 
+     {
+        throw std::runtime_error("No pipelines found. Please parse the log first.");
+     }
     for (const auto& pipeline : m_pipelines) 
     {
-        std::cout << "Pipeline: " << pipeline.first << std::endl;
+        std::cout << "Pipeline " << pipeline.first << std::endl;
         const auto& messages = pipeline.second.messages_vector;
         for (const auto& msg : messages) 
         {
-          std::cout << "  " << msg->id <<"| "<< msg->body << "\n";
+          std::cout << " " << msg->id <<"| "<< msg->body << "\n";
         }
         
     }
+}
+
+std::unique_ptr<std::string> LogParser::getLogMessagesPrintable() const
+{
+    if (m_pipelines.empty()) 
+    {
+        throw std::runtime_error("No pipelines found. Please parse the log first.");
+    }
+
+    auto result = std::make_unique<std::string>();
+    for (const auto& pipeline : m_pipelines) 
+    {
+        *result += "Pipeline " + pipeline.first + "\n";
+        const auto& messages = pipeline.second.messages_vector;
+        for (const auto& msg : messages) 
+        {
+            *result += " " + msg->id + "| " + msg->body + "\n";
+        }
+    }
+    return result;
 }
 

@@ -16,4 +16,12 @@ After that it creates a vector and inserts the messages following the next_ids s
 
 Finally, it prints the messages in the vector:
 
-![Capture](Capture.PNG)
+![Capture](docs/Capture.PNG)
+
+or the printable string can be received and used.
+
+## Unit tests
+
+The unit tests are implemented using Google Test framework. 
+They check for malformed lines, correct parsing of messages, and the correct order of messages:
+![CaptureTest](docs/Capture2.PNG)
