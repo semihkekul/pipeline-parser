@@ -1,11 +1,12 @@
 #pragma once
+#include <deque>
 #include <string>
 #include <unordered_map>
 #include <fstream>
 
 constexpr char ASCII_ENCODING = '0';
 constexpr char HEX_ENCODING = '1';
-
+const std::string LAST_MESSAGE_ID("-1");
 struct LogMessage
 {
     std::string pipeline_id;
@@ -19,7 +20,8 @@ struct Pipeline
 {
     std::unordered_map<std::string, std::unique_ptr<LogMessage>> messages_map;
     std::unordered_map<std::string, std::string> previous_map;
-    std::vector<std::unique_ptr<LogMessage>> messages_vector; 
+    std::unordered_map<std::string, std::string> next_map;
+    std::list<std::string> messages_list;
 };
 
 class LogParser {

@@ -100,7 +100,7 @@ TEST(LogParserTest, ParseMalformedLogStrings)
 {
     {
         LogParser parser;
-        //pipeline 1 doesn't have -1
+        //pipeline 2 doesn't have -1 ending
         std::string log_content = "1 0 0 [some text] 1\n"  
                                   "1 1 0 [another text] 2\n"
                                   "2 99 1 [4F4B] 3\n"
@@ -170,6 +170,73 @@ TEST(LogParserTest, ParseMalformedLogStrings)
 
 }
 
+TEST(LogParserTest, ParseLogMalformedLogStringBrokenLinks)
+{
+     {
+        LogParser parser;
+        std::string log_content = 
+                                  "1 0 0 [some text] 1\n"
+                                  "1 2 1 [626F6479] 3\n"
+                                  "1 4 0 [what another text] -1\n";
+            
+
+
+        parser.parseLog(log_content);
+
+
+        auto messages = std::move(parser.getLogMessagesPrintable());
+
+        EXPECT_EQ(*messages,"Pipeline 1\n"
+                             " 4| what another text\n"
+                             " 2| body\n"
+                             " 0| some text\n");
+    }
+    
+    {
+        LogParser parser;
+        std::string log_content =
+                                  "1 5 0 [last] 7\n"  // 7 doesn't exists
+                                  "1 0 0 [some text] 1\n"
+                                  "1 2 1 [626F6479] 3\n";
+
+
+        parser.parseLog(log_content);
+
+
+        auto messages = std::move(parser.getLogMessagesPrintable());
+
+        EXPECT_EQ(*messages,"Pipeline 1\n"
+                             " 2| body\n"
+                             " 0| some text\n"
+                             " 5| last\n"
+                             );
+    }
+}
+
+
+TEST(LogParserTest, ParseLogMalformedLogStringLoopLinks)
+{
+    LogParser parser;
+    std::string log_content = "2 3 1 [4F4B] -1\n"
+                              "1 0 0 [some text] 1\n"
+                              "1 1 0 [another text] 2\n"
+                              "2 99 1 [4F4B] 3\n"
+                              "1 2 1 [626F6479] 1\n";  // loop back to id 1
+
+
+    parser.parseLog(log_content);
+
+
+    auto messages = std::move(parser.getLogMessagesPrintable());
+
+    EXPECT_EQ(*messages, "Pipeline 2\n"
+                         " 3| OK\n"
+                         " 99| OK\n"
+                         "Pipeline 1\n"
+                         " 2| body\n"
+                         " 1| another text\n"
+                         " 0| some text\n");
+}
 
 TEST(LogParserTest, ParserLogFile)
 {

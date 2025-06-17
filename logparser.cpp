@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include "logparser.h"
+#include <unordered_set>
 
 
 void LogParser::populateMessagesVector()
@@ -14,26 +15,43 @@ void LogParser::populateMessagesVector()
     {
         auto& messages_map = pipeline.second.messages_map;
         auto& previous_map = pipeline.second.previous_map;
-        auto& messages_vector = pipeline.second.messages_vector;
+        auto& next_map = pipeline.second.next_map;
+        auto& messages_list = pipeline.second.messages_list;
 
-        const size_t len = messages_map.size();
-        messages_vector.resize(len); // Resize the vector to hold all messages
+        std::unordered_set<std::string> visited_ids; // To keep track of visited message IDs
 
-        for (const auto& message_pair : messages_map) 
-        {
-            auto message_id = message_pair.first;
-            
-            if (previous_map.find(message_id) == previous_map.end()) // found the first message (the one without previous)
+        for (const auto& message_pair : messages_map) {
+            const auto& msg = message_pair.second;
+
+            if(visited_ids.find(msg->id) != visited_ids.end()) // stop if there is loop or already visited
             {
-                for(size_t i = 0; i < len; ++i) 
+                continue; 
+            }
+
+            if (previous_map.find(msg->id) == previous_map.end()) 
+            {
+                std::string current_id = msg->id;
+
+                while (visited_ids.find(current_id) == visited_ids.end()) // stop if there is loop
                 {
-                    const auto next_id = messages_map[message_id]->next_id;
-                    auto iter_to_message = messages_map.find(message_id);
-                    messages_vector[len - i - 1] = std::move(iter_to_message->second);
-                    messages_map.erase(iter_to_message); // Remove the message from the map after moving it to the vector
-                    message_id = next_id;
+                    if(messages_map.find(current_id) == messages_map.end())
+                    {
+                        break;
+                    }
+
+                    visited_ids.insert(current_id); // Mark the current message ID as visited
+                    
+                    messages_list.push_back(current_id);
+
+                    auto next_id_iter = next_map.find(current_id);
+                    if(next_id_iter == next_map.end())
+                    {
+                        break; // No next message found, exit the loop
+                    }
+                    current_id = next_id_iter->second;
+
                 }
-                break;
+
             }
         }
     }
@@ -49,7 +67,12 @@ void LogParser::addLogMessageToPipeline(std::unique_ptr<LogMessage> message)
 
     auto& pipeline = m_pipelines[message->pipeline_id];
 
-    pipeline.previous_map[message->next_id] = message->id; // The previous id of the next message is current id
+    if(message->next_id != LAST_MESSAGE_ID) // this is the last message so no next message
+    {
+        pipeline.previous_map[message->next_id] = message->id; // The previous id of the next message is current id
+        pipeline.next_map[message->id] = message->next_id; // The next id of the current message is next_id
+    }
+    
 
     pipeline.messages_map[message->id] = std::move(message); // Add the message to the map
 
@@ -182,9 +205,13 @@ void LogParser::printLogMessages() const
     for (const auto& pipeline : m_pipelines) 
     {
         std::cout << "Pipeline " << pipeline.first << std::endl;
-        const auto& messages = pipeline.second.messages_vector;
-        for (const auto& msg : messages) 
+        const auto& messages_list = pipeline.second.messages_list;
+        const auto& messages_map = pipeline.second.messages_map;
+        for (auto it = messages_list.rbegin(); it != messages_list.rend(); ++it) 
         {
+         const std::string& id = *it;
+
+          const auto& msg = messages_map.find(id)->second;
           std::cout << " " << msg->id <<"| "<< msg->body << "\n";
         }
         
@@ -201,10 +228,19 @@ std::unique_ptr<std::string> LogParser::getLogMessagesPrintable() const
     auto result = std::make_unique<std::string>();
     for (const auto& pipeline : m_pipelines) 
     {
+
+
         *result += "Pipeline " + pipeline.first + "\n";
-        const auto& messages = pipeline.second.messages_vector;
-        for (const auto& msg : messages) 
+        const auto& messages_list = pipeline.second.messages_list;
+        const auto& messages_map = pipeline.second.messages_map;
+
+        // Reverse traverse the messages_list
+        for (auto it = messages_list.rbegin(); it != messages_list.rend(); ++it) 
         {
+            const std::string& id = *it;
+
+            const auto& msg = messages_map.find(id)->second;
+
             *result += " " + msg->id + "| " + msg->body + "\n";
         }
     }
