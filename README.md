@@ -10,9 +10,11 @@ The program reads the log files and parse the messages. <br />
 
 It puts the parsed messages into an unordered_map of messages and inserts the message id to a **"previous message id"** unordered_map.<br />
 
-This helps to find a message which is not in the previous message id map that is the first message.<br />
+This helps to find a message which is not in the previous message id map that is the first message. This kind of messages can be more than once
+so algorithm start sequencing for each of them.<br />
 
-After that it creates a vector and inserts the messages following the next_ids starting form the first message. It fills the vector from end to begin (reverse order). <br />
+After that it creates a list and inserts the messages following the next_ids starting form the first message. 
+Broken links are inserted to final list according the their place in the unordered_map of messages. <br />
 
 Finally, it prints the messages in the vector:
 
