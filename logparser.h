@@ -3,6 +3,8 @@
 #include <string>
 #include <unordered_map>
 #include <fstream>
+#include <memory>
+#include <list>
 
 constexpr char ASCII_ENCODING = '0';
 constexpr char HEX_ENCODING = '1';

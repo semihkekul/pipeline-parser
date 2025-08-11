@@ -23,18 +23,18 @@ void LogParser::populateMessagesVector()
         for (const auto& message_pair : messages_map) {
             const auto& msg = message_pair.second;
 
-            if(visited_ids.find(msg->id) != visited_ids.end()) // stop if there is loop or already visited
+            if(visited_ids.find(msg->id) != visited_ids.end()) // skip if there is loop or already visited
             {
                 continue; 
             }
 
-            if (previous_map.find(msg->id) == previous_map.end()) 
+            if (previous_map.find(msg->id) == previous_map.end()) //  starting point for a chain
             {
                 std::string current_id = msg->id;
 
                 while (visited_ids.find(current_id) == visited_ids.end()) // stop if there is loop
                 {
-                    if(messages_map.find(current_id) == messages_map.end())
+                    if(messages_map.find(current_id) == messages_map.end()) // the message doesn't exist in the map -> so broken link
                     {
                         break;
                     }
@@ -67,7 +67,7 @@ void LogParser::addLogMessageToPipeline(std::unique_ptr<LogMessage> message)
 
     auto& pipeline = m_pipelines[message->pipeline_id];
 
-    if(message->next_id != LAST_MESSAGE_ID) // this is the last message so no next message
+    if(message->next_id != LAST_MESSAGE_ID)
     {
         pipeline.previous_map[message->next_id] = message->id; // The previous id of the next message is current id
         pipeline.next_map[message->id] = message->next_id; // The next id of the current message is next_id
@@ -246,4 +246,7 @@ std::unique_ptr<std::string> LogParser::getLogMessagesPrintable() const
     }
     return result;
 }
+
+
+
 
