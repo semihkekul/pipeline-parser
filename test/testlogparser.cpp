@@ -86,13 +86,14 @@ TEST(LogParserTest, ParseLogString)
 
     auto messages = std::move(parser.getLogMessagesPrintable());
 
-    EXPECT_EQ(*messages, "Pipeline 2\n"
-                         " 3| OK\n"
-                         " 99| OK\n"
-                         "Pipeline 1\n"
+    EXPECT_EQ(*messages, "Pipeline 1\n"
                          " 2| body\n"
                          " 1| another text\n"
-                         " 0| some text\n");
+                         " 0| some text\n"
+                         "Pipeline 2\n"
+                         " 3| OK\n"
+                         " 99| OK\n"
+                        );
 
 }
 
@@ -134,12 +135,12 @@ TEST(LogParserTest, ParseMalformedLogStrings)
 
         auto messages = std::move(parser.getLogMessagesPrintable());
 
-        EXPECT_EQ(*messages, "Pipeline 2\n"
-                             " 3| OK\n"
-                             " 99| OK\n"
-                             "Pipeline 1\n"
+        EXPECT_EQ(*messages, "Pipeline 1\n"
                              " 2| body\n"
                              " 1| another text\n"
+                             "Pipeline 2\n"
+                             " 3| OK\n"
+                             " 99| OK\n"
                              );
     }
 
@@ -157,12 +158,12 @@ TEST(LogParserTest, ParseMalformedLogStrings)
 
         auto messages = std::move(parser.getLogMessagesPrintable());
 
-        EXPECT_EQ(*messages, "Pipeline 2\n"
+        EXPECT_EQ(*messages,"Pipeline 1\n"
+                             " 2| body\n"
+                             " 1| another text\n" 
+                             "Pipeline 2\n"
                              " 3| OK\n"
                              " 99| OK\n"
-                             "Pipeline 1\n"
-                             " 2| body\n"
-                             " 1| another text\n"
                              );
     }
 
@@ -187,9 +188,10 @@ TEST(LogParserTest, ParseLogMalformedLogStringBrokenLinks)
         auto messages = std::move(parser.getLogMessagesPrintable());
 
         EXPECT_EQ(*messages,"Pipeline 1\n"
-                             " 4| what another text\n"
+                             " 0| some text\n"
                              " 2| body\n"
-                             " 0| some text\n");
+                             " 4| what another text\n"
+                             );
     }
     
     {
@@ -206,9 +208,9 @@ TEST(LogParserTest, ParseLogMalformedLogStringBrokenLinks)
         auto messages = std::move(parser.getLogMessagesPrintable());
 
         EXPECT_EQ(*messages,"Pipeline 1\n"
-                             " 2| body\n"
-                             " 0| some text\n"
                              " 5| last\n"
+                             " 0| some text\n"
+                             " 2| body\n"
                              );
     }
 }
@@ -229,13 +231,14 @@ TEST(LogParserTest, ParseLogMalformedLogStringLoopLinks)
 
     auto messages = std::move(parser.getLogMessagesPrintable());
 
-    EXPECT_EQ(*messages, "Pipeline 2\n"
-                         " 3| OK\n"
-                         " 99| OK\n"
-                         "Pipeline 1\n"
+    EXPECT_EQ(*messages, "Pipeline 1\n"
                          " 2| body\n"
                          " 1| another text\n"
-                         " 0| some text\n");
+                         " 0| some text\n"
+                        "Pipeline 2\n"
+                         " 3| OK\n"
+                         " 99| OK\n"
+                        );
 }
 
 TEST(LogParserTest, ParserLogFile)
@@ -246,17 +249,18 @@ TEST(LogParserTest, ParserLogFile)
 
      auto messages = std::move(parser.getLogMessagesPrintable());
 
-    EXPECT_EQ(*messages,    "Pipeline legacy-hex\n"
-                            " 2| Morbi lobortis maximus viverra. Aliquam et hendrerit nulla\n"
-                            " 1| Vivamus rutrum id erat nec vehicula. Donec fringilla lacinia eleifend.\n"
+    EXPECT_EQ(*messages,    "Pipeline 1\n"
+                            " 0| Lorem ipsum dolor sit amet, consectetur adipiscing elit\n"
                             "Pipeline 2\n"
                             " 12| nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n"
                             " 30| commodo consequat. duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat\n"
                             " 10| Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea\n"
-                            "Pipeline 1\n"
-                            " 0| Lorem ipsum dolor sit amet, consectetur adipiscing elit\n"
                             "Pipeline 3\n"
-                            " 1| sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n");
+                            " 1| sed do eiusmod tempor incididunt ut labore et dolore magna aliqua\n"
+                            "Pipeline legacy-hex\n"
+                            " 2| Morbi lobortis maximus viverra. Aliquam et hendrerit nulla\n"
+                            " 1| Vivamus rutrum id erat nec vehicula. Donec fringilla lacinia eleifend.\n"
+                        );
 }
 
 

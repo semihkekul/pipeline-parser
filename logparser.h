@@ -2,6 +2,7 @@
 #include <deque>
 #include <string>
 #include <unordered_map>
+#include <map>
 #include <fstream>
 #include <memory>
 #include <list>
@@ -39,7 +40,7 @@ public:
 
 private:
 
-    std::unordered_map<std::string, Pipeline> m_pipelines;
+    std::map<std::string, Pipeline> m_pipelines;
 
     std::ifstream m_file;
 
